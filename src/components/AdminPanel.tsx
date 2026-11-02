@@ -1,3 +1,5 @@
+"use client";
+
 import {useEffect,useState} from 'react';
 import {SignIn,UserButton} from './auth/KleapAuth';
 import {getKleapDb} from '@/lib/kleap-db';
