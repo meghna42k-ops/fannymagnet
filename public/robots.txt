@@ -1,0 +1,36 @@
+# Crawler policy (Kleap default):
+#  - Classic search engines (Google, Bing) + AI ANSWER engines: ALLOWED, so the
+#    site can be found AND cited in ChatGPT / Perplexity / Claude / Google AI.
+#  - AI TRAINING crawlers: BLOCKED, so the site's content is not used to train
+#    AI models without the owner's consent (reservation under EU 2019/790 art. 4).
+# Edit freely. Deployer rewrites the Sitemap line with the real domain.
+User-agent: *
+Allow: /
+
+# AI search / answer engines — ALLOWED (drive citations + referral traffic)
+User-agent: OAI-SearchBot
+Allow: /
+User-agent: ChatGPT-User
+Allow: /
+User-agent: PerplexityBot
+Allow: /
+User-agent: Claude-SearchBot
+Allow: /
+User-agent: Claude-User
+Allow: /
+
+# AI training crawlers — BLOCKED (protect the owner's content)
+User-agent: GPTBot
+Disallow: /
+User-agent: Google-Extended
+Disallow: /
+User-agent: CCBot
+Disallow: /
+User-agent: ClaudeBot
+Disallow: /
+User-agent: Applebot-Extended
+Disallow: /
+User-agent: Bytespider
+Disallow: /
+
+Sitemap: https://example.kleap.io/sitemap-index.xml

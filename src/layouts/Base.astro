@@ -1,0 +1,675 @@
+---
+import "../styles/global.css";
+import { ClientRouter } from "astro:transitions";
+
+interface Props {
+  title: string;
+  description: string;
+  /** 'website' default; set 'article' on blog posts. Never hardcode for all pages. */
+  ogType?: "website" | "article";
+  image?: string;
+  /** Extra Schema.org nodes merged into the @graph (Article, Product, LocalBusiness, FAQPage, BreadcrumbList…). */
+  schema?: Record<string, unknown>[];
+  /** 🌐 i18n — MULTILINGUAL sites ONLY. Per-page override of the system-detected
+   *  <html lang>/<dir>. Leave UNSET on single-language sites (the default): the
+   *  system stamps the detected language automatically. On a /<locale>/ page,
+   *  pass that page's own locale — lang="en" (dir="ltr"), or dir="rtl" for ar/he/fa. */
+  lang?: string;
+  dir?: "ltr" | "rtl";
+  /** 🌐 hreflang alternates — MULTILINGUAL sites ONLY (empty by default). The SAME
+   *  page in every locale + an x-default. ABSOLUTE URLs: new URL("/en/", Astro.site).href.
+   *  Rendered as <link rel="alternate" hreflang>. */
+  alternates?: { hreflang: string; href: string }[];
+  /** 🔒 Keep this page OUT of search indexes: renders <meta robots noindex,nofollow>
+   *  instead of the default index,follow. For owner-only surfaces (an admin/login
+   *  page) and gated pages you don't want in Google. Default false — every
+   *  marketing page stays indexable, unchanged. */
+  noindex?: boolean;
+}
+
+const {
+  title,
+  description,
+  ogType = "website",
+  image,
+  schema = [],
+  lang,
+  dir,
+  alternates = [],
+  noindex = false,
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+// <html lang>/<dir> DEFAULT to the SYSTEM-detected content language via the
+// __KLEAP_LANG__/__KLEAP_DIR__ tokens (substituted at build; ONE value for the
+// whole site, dir="rtl" flips Arabic/Hebrew layout). A MULTILINGUAL page overrides
+// per-locale with the `lang`/`dir` props (the ?? keeps the detected token as the
+// single-language default, so monolingual sites are unchanged). Documented here in the
+// frontmatter (build-only, never shipped) rather than as a comment between
+// <!doctype> and <html> — a JSX comment there makes Astro drop the <html> tag.
+// Real site name + social image are STAMPED BY THE SYSTEM at build (the deployer
+// knows the app's display name + its og-image endpoint) via the
+// __KLEAP_SITENAME__ / __KLEAP_OGIMAGE__ tokens substituted in astro-build-runner
+// — the generator never controls them. The `|| "Site"` / empty fallbacks keep
+// sane values on preview builds where the tokens aren't provided.
+const siteName = "__KLEAP_SITENAME__" || "Site";
+const ogImage = image || "__KLEAP_OGIMAGE__";
+// 🛟 NEVER-EMPTY META (deterministic, single chokepoint for every page). A page
+// that passes an empty description/title would otherwise ship a blank
+// <meta name="description">/og:description or a titleless card — bad for SEO and
+// ugly on social shares. Derive safe fallbacks here: title → the site name;
+// description → a SYSTEM-derived fallback (__KLEAP_SITEDESC__, filled by the
+// deployer from the home page's real H1/first paragraph, else the site name).
+// The token is substituted to "" on preview builds where it isn't provided, so
+// the site-name fallback applies. metaTitle/metaDescription are what every meta
+// tag + the JSON-LD render — so nothing here ever ships empty.
+const siteDescFallback = "__KLEAP_SITEDESC__";
+const metaTitle = (title ?? "").trim() || siteName;
+const metaDescription =
+  (description ?? "").trim() || siteDescFallback.trim() || siteName;
+// dateModified is injected by the deployer (DEPLOY_TIMESTAMP) — always fresh, system-injected.
+const dateModified = import.meta.env.DEPLOY_TIMESTAMP ?? new Date().toISOString();
+
+// GEO contract: ONE script, single object with @graph (never a bare array).
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    { "@type": "WebSite", name: siteName, url: Astro.site?.href },
+    {
+      "@type": "WebPage",
+      name: metaTitle,
+      description: metaDescription,
+      url: canonical,
+      dateModified,
+    },
+    ...schema,
+  ],
+};
+---
+
+<!doctype html>
+<html lang={lang ?? "__KLEAP_LANG__"} dir={dir ?? "__KLEAP_DIR__"}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {/* 🔗 Send no Referer cross-origin so assets.kleap.io (and any hotlink-protected
+        host) never 403s when the site is served on a custom domain. */}
+    <meta name="referrer" content="same-origin" />
+    <title>{metaTitle}</title>
+    <meta name="description" content={metaDescription} />
+    <link rel="canonical" href={canonical} />
+    {/* 🌐 hreflang alternates — empty on single-language sites; on a multilingual
+        site each page passes the SAME page in every locale + an x-default. */}
+    {
+      alternates.map((a) => (
+        <link rel="alternate" hreflang={a.hreflang} href={a.href} />
+      ))
+    }
+    <meta name="robots" content={noindex ? "noindex,nofollow" : "index,follow"} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    {/* Favicons: a complete multi-platform set is auto-generated by the deployer
+         (favicon.svg + favicon-32 + apple-touch + PWA manifest icons). The generator may
+         optionally ship its own public/favicon.svg for an exact brand mark — the
+         deployer keeps it and derives the rasters from it. */}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    {/* Seamless cross-page transitions (Astro View Transitions). Navigations
+         between pages cross-fade instead of a hard reload. Motion scripts must
+         init on the `astro:page-load` event (the fancy-web block does) so they
+         survive each navigation. Elements sharing a transition:name morph. */}
+    <ClientRouter />
+
+    {/* 🚫 HEADING ITALICS BANNED (deterministic rule). The generator keeps
+         dropping a slanted "artistic" accent-word into headings ("L'art du
+         <em>savoir-faire</em>") — the single most-hated unwanted cliché — and
+         it ignores the prompt rule. So we kill it at the scaffold level: every
+         heading and any italic child renders UPRIGHT, no matter what the generator wrote.
+         Body copy keeps its italics (real quotes); only headings are forced. */}
+    <style is:global>
+      /* Default brand font: Inter on every Kleap site (overrides Tailwind's
+         system-font default). A site can still override per-design. */
+      body { font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+      h1, h2, h3, h4, h5, h6 { font-family: 'Archivo', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+      /* is:global is REQUIRED — a scoped <style> only hits Base.astro's own
+         headings, never the ones inside Hero.astro/etc. (different astro cid). */
+      h1, h2, h3, h4, h5, h6,
+      :is(h1, h2, h3, h4, h5, h6) * {
+        font-style: normal !important;
+      }
+      /* 📐 ANTI EMPTY-HERO (deterministic). The generator keeps making the first hero a
+         full-height (min-h-screen) section whose content doesn't fill it, then
+         bottom-anchors it (items-end) — so on a tall screen the top half ships as
+         a big empty band ("the hero is broken"). It ignores the prompt rule, so
+         enforce it: (1) never bottom-anchor a full-height hero — center it;
+         (2) cap the first hero's forced height so it can shrink toward its
+         content instead of always eating 100vh of mostly-empty space. */
+      section[class*="min-h-screen"][class*="items-end"],
+      section[class*="min-h-dvh"][class*="items-end"] {
+        align-items: center !important;
+      }
+      body > main > section:first-child[class*="min-h-screen"],
+      body > section:first-of-type[class*="min-h-screen"],
+      main > section:first-of-type[class*="min-h-screen"] {
+        min-height: clamp(34rem, 82vh, 60rem) !important;
+      }
+    </style>
+
+    {/* Buttery smooth scroll (Lenis), guaranteed at the scaffold level: the generator
+         model reliably DROPS Lenis when it rewrites the motion block, so we own
+         it here. Loaded once from CDN, re-initialised on every page-load (so it
+         survives View Transitions), singleton, and fully disabled under
+         prefers-reduced-motion. GSAP scroll reveals stay the generator's job. */}
+    <script is:inline>
+      document.addEventListener("astro:page-load", function () {
+        // 🛟 SHARED force-show primitives. The three failsafes below (hero
+        // reveal, below-fold backstop, fail-open sweep) all go through
+        // kleapShow(), so all three obey the same two invariants — a failsafe
+        // must never BECOME the bug:
+        //  1. NEVER touch a stacked layer. Absolutely-positioned boxes sharing
+        //     a parent with another absolutely-positioned box (sticky video
+        //     scrollers, carousels, tab panels, image+overlay pairs) take turns
+        //     at opacity 1 BY DESIGN. Pinning them all leaves the last one in
+        //     DOM order covering the active one forever.
+        //  2. RELEASE on re-render. Whatever we pin gets its inline opacity
+        //     removed the moment the page's own JS rewrites that element's
+        //     class — an inline style outranks a framework class forever, so we
+        //     hand the element back instead of winning an argument with React.
+        //     A genuinely-stuck reveal (nothing ever re-renders it) keeps its
+        //     rescue, so fail-OPEN is preserved; an element the page keeps
+        //     re-rendering is handed back for good after one retry.
+        // Kill-switch for the broadest of the three: ASTRO_FAIL_OPEN_SWEEP=off.
+        var KLEAP_SWEEP_ON = "__KLEAP_FAILOPEN__" !== "off";
+        function kleapRelease(el, dur) {
+          if (!window.MutationObserver) return;
+          var mo = new MutationObserver(function () {
+            mo.disconnect();
+            el.style.removeProperty("opacity");
+            el.style.removeProperty("transform");
+            el.style.removeProperty("transition");
+            // The page's own JS just re-rendered this element's class, so it
+            // owns the element's visibility. Give it ONE more chance to be
+            // rescued (a class change can be unrelated to the stuck reveal),
+            // then stand down for good: fighting a framework that rewrites
+            // the class on every frame ends in a flicker loop and, worse, in
+            // our inline style winning permanently — the original bug.
+            if ((el.__kleapPins || 0) >= 2) { el.__kleapOwned = 1; return; }
+            setTimeout(function () { kleapShow(el, dur); }, 400);
+          });
+          // class only — observing "style" would re-fire on our own write.
+          mo.observe(el, { attributes: true, attributeFilter: ["class"] });
+        }
+        function kleapShow(el, dur) {
+          try {
+            // Detached nodes report opacity "" -> parseFloat NaN, and NaN >= 0.1
+            // is false, so without this they sail through every check below.
+            if (!el || !el.isConnected || el.__kleapOwned) return;
+            var cs = getComputedStyle(el);
+            var op = parseFloat(cs.opacity);
+            if (!(op < 0.1)) return;
+            if (cs.display === "none" || cs.visibility === "hidden") return;
+            // Hidden BY DESIGN until an interaction/breakpoint: ANY Tailwind
+            // state variant touching opacity (group-hover:opacity-100,
+            // peer-checked:, data-[state=open]:, hover:!opacity-100,
+            // group-hover:opacity-[.95], md:…). Value-agnostic on purpose —
+            // matching only digits missed arbitrary values and `!`.
+            var cls = el.getAttribute("class") || "";
+            if (/(^|\s)[^\s]+:!?opacity-/.test(cls)) return;
+            // A LAYER, not a missing section. Absolutely-positioned boxes that
+            // share a parent with another absolutely-positioned box are a
+            // cross-fade stack (sticky scrollers, carousels, tab panels) or an
+            // overlay pair: they take turns at opacity 1 by design, and force-
+            // showing them stacks every layer so the last one in DOM order
+            // covers the active one forever. A lone absolute box (a full-bleed
+            // hero background) is still rescued. No geometry comparison here on
+            // purpose: a transform on one layer (scale-105, Ken-Burns) defeats
+            // any rect matching, and transforms are exactly what these layers use.
+            if (cs.position === "absolute" || cs.position === "fixed") {
+              var p = el.parentElement;
+              var ch = p ? p.children : [];
+              for (var i = 0; i < ch.length; i++) {
+                if (ch[i] === el) continue;
+                var sc = getComputedStyle(ch[i]);
+                if (sc.position === "absolute" || sc.position === "fixed") return;
+              }
+            }
+            el.__kleapPins = (el.__kleapPins || 0) + 1;
+            el.style.transition = "opacity " + dur + " ease, transform " + dur + " ease";
+            el.style.opacity = "1";
+            el.style.transform = "none";
+            kleapRelease(el, dur);
+          } catch (e) {}
+        }
+        // Exposed so the reveal guard that runs at the end of the page
+        // (REVEAL_GUARD_SCRIPT in astro-build-runner.ts) obeys the SAME rules.
+        // It fires 300ms earlier than the sweep, and once anything has pinned
+        // an element the sweep skips it (opacity >= 0.1), so an unguarded
+        // second writer silently re-creates the bug.
+        window.__kleapShow = kleapShow;
+
+        // 🛟 REVEAL FAILSAFE (runs ALWAYS, even reduced-motion). Scroll-reveals on
+        // ABOVE-THE-FOLD content — especially the hero — frequently never fire:
+        // ScrollTrigger waits for the element to scroll INTO view, but an already-
+        // visible hero never does, so its [data-reveal] wrapper stays opacity:0 and
+        // the first screen ships BLANK. After giving GSAP a beat to play, force any
+        // still-hidden [data-reveal] that sits in the initial viewport to appear.
+        // Only touches at/above-the-fold elements → below-fold reveals still animate.
+        function revealFailsafe() {
+          var vh = window.innerHeight || 800;
+          document.querySelectorAll("[data-reveal]").forEach(function (el) {
+            if (el.getBoundingClientRect().top < vh * 1.05) kleapShow(el, ".5s");
+          });
+        }
+        setTimeout(revealFailsafe, 1400);
+        window.addEventListener("load", function () { setTimeout(revealFailsafe, 700); });
+
+        // 🛟 BELOW-THE-FOLD reveal backstop (runs ALWAYS, even reduced-motion).
+        // The above failsafe only rescues elements already in the first viewport.
+        // BELOW-fold [data-reveal] wrappers depend on the generator's GSAP/ScrollTrigger
+        // firing as they scroll into view — but when ScrollTrigger silently fails
+        // (Lenis desync, not loaded, wrong trigger) those sections stay at
+        // opacity:0 FOREVER, so whole sections (testimonials, pricing, feature
+        // bento) ship INVISIBLE and the page looks broken/empty. This
+        // IntersectionObserver reveals any still-hidden [data-reveal] as it
+        // enters view, independent of GSAP. The 550ms grace gives GSAP first
+        // crack (so working reveals still animate); we only force-show what's
+        // still hidden after that. unobserve after first hit = zero ongoing cost.
+        if ("IntersectionObserver" in window) {
+          var io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+              if (!e.isIntersecting) return;
+              var el = e.target;
+              io.unobserve(el);
+              setTimeout(function () { kleapShow(el, ".6s"); }, 550);
+            });
+          }, { rootMargin: "0px 0px -8% 0px" });
+          document.querySelectorAll("[data-reveal]").forEach(function (el) { io.observe(el); });
+        }
+
+        // 🛟 FAIL-OPEN SWEEP (last resort, runs ALWAYS). The generator often animates
+        // reveals via ad-hoc GSAP selectors (gsap.from(".card",{opacity:0}),
+        // a stagger on ".testimonial") with NO [data-reveal] marker — so when
+        // ScrollTrigger desyncs, those cards/sections stay opacity:0 and ship
+        // INVISIBLE even though the content is fully in the DOM (a real, common
+        // "site looks broken/empty" report). 2.8s after load, force-show ANY
+        // element still stuck at opacity:0 that has real content — while leaving
+        // genuinely-hidden UI (modals, dropdowns, tooltips, display:none) alone.
+        //
+        // ⚠️ Only what the visitor has ALREADY REACHED (in view or above). An
+        // element still below the fold at 2.8s is not stuck, it is WAITING for
+        // its scroll-reveal — pinning it to opacity 1 there killed every CSS
+        // scroll animation on the page (app 345, 2026-10-01: "add motion" turned
+        // into a page where nothing ever moved). Below-fold candidates are
+        // watched instead and rescued only if they are STILL hidden 1.2s after
+        // scrolling into view, so a broken ScrollTrigger still fails open.
+        // Automated browsers (navigator.webdriver: previewTest, screenshots,
+        // the publish checks) never scroll like a visitor — their full-page
+        // capture would show every waiting reveal as an empty band, and the
+        // agent then "fixes" a site that is fine. For them, keep forcing
+        // everything visible, as before.
+        var kleapArrivalIO = null;
+        function kleapWatchArrival(el) {
+          if (el.__kleapWatched) return;
+          if (!("IntersectionObserver" in window)) { kleapShow(el, ".5s"); return; }
+          el.__kleapWatched = 1;
+          if (!kleapArrivalIO) {
+            kleapArrivalIO = new IntersectionObserver(function (entries) {
+              entries.forEach(function (e) {
+                if (!e.isIntersecting) return;
+                var t = e.target;
+                kleapArrivalIO.unobserve(t);
+                setTimeout(function () { kleapShow(t, ".6s"); }, 1200);
+              });
+            }, { rootMargin: "0px 0px -8% 0px" });
+          }
+          kleapArrivalIO.observe(el);
+        }
+        function failOpenSweep() {
+          var vh = window.innerHeight || 800;
+          var nodes = document.querySelectorAll("main *, section, section *, footer *, [data-reveal]");
+          // Two passes — collect (pure reads) then write — so our own opacity
+          // writes don't force a style recalc for every later getComputedStyle.
+          var todo = [];
+          for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            var cs = getComputedStyle(el);
+            if (parseFloat(cs.opacity) >= 0.1) continue;
+            if (cs.display === "none" || cs.visibility === "hidden") continue;
+            if (el.closest("[hidden],[aria-hidden='true'],[role='dialog'],[role='menu'],[role='tooltip'],[role='listbox'],.modal,dialog:not([open]),details:not([open])")) continue;
+            var r = el.getBoundingClientRect();
+            if (r.width < 8 || r.height < 8) continue;
+            if (!(el.textContent || "").trim() && !el.querySelector("img,svg,video,canvas,picture")) continue;
+            if (r.top >= vh && !navigator.webdriver) { kleapWatchArrival(el); continue; }
+            todo.push(el);
+          }
+          for (var j = 0; j < todo.length; j++) kleapShow(todo[j], ".5s");
+        }
+        if (KLEAP_SWEEP_ON) {
+          setTimeout(failOpenSweep, 2800);
+          window.addEventListener("load", function () { setTimeout(failOpenSweep, 3200); });
+        }
+
+        if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        function init() {
+          if (window.__lenis) { try { window.__lenis.destroy(); } catch (e) {} }
+          var l = new window.Lenis({ lerp: 0.1 });
+          window.__lenis = l;
+          function raf(t) { l.raf(t); requestAnimationFrame(raf); }
+          requestAnimationFrame(raf);
+          // 🔗 Sync Lenis → ScrollTrigger. WITHOUT this, ScrollTrigger never sees
+          // Lenis's smooth scroll, so EVERY scroll-reveal stays at opacity:0 and the
+          // page content is invisible (root cause of the empty section). ScrollTrigger
+          // is loaded by the generator's motion block and may arrive AFTER Lenis, so the
+          // handler re-checks each scroll instead of binding to it once.
+          l.on("scroll", function () { if (window.ScrollTrigger) window.ScrollTrigger.update(); });
+          if (window.ScrollTrigger) window.ScrollTrigger.refresh();
+        }
+        if (window.Lenis) { init(); }
+        else {
+          var s = document.createElement("script");
+          s.src = "https://cdn.jsdelivr.net/npm/lenis@1/dist/lenis.min.js";
+          s.onload = init;
+          document.head.appendChild(s);
+        }
+      });
+    </script>
+
+    {/* Broken-image safety net, guaranteed at the scaffold level: the generator
+         hardcodes stock photo URLs (images.unsplash.com/photo-<id>) and some IDs
+         are invalid → 404. We OWN the fallback here so any failed image
+         degrades to a tasteful palette gradient instead of a broken-image icon
+         (or an invisible/contrast-failed bg-image hero). Zero network, runs
+         before paint, re-checks on every View-Transition load. */}
+    <script is:inline>
+      (function () {
+        function placeholder(img) {
+          if (img.dataset.kfx) return;
+          img.dataset.kfx = "1";
+          img.removeAttribute("src");
+          img.removeAttribute("srcset");
+          img.style.background =
+            "linear-gradient(135deg, var(--surface, #e9e4dc), var(--accent-color, var(--accent, #b9a48a)))";
+          img.style.objectFit = "cover";
+          if (!img.getAttribute("width") && !img.style.minHeight)
+            img.style.minHeight = "200px";
+        }
+        document.addEventListener(
+          "error",
+          function (e) {
+            var t = e.target;
+            if (t && t.tagName === "IMG") placeholder(t);
+          },
+          true,
+        );
+        function sweep() {
+          document.querySelectorAll("img").forEach(function (img) {
+            if (img.complete && img.naturalWidth === 0 && img.getAttribute("src"))
+              placeholder(img);
+          });
+        }
+        document.addEventListener("DOMContentLoaded", sweep);
+        document.addEventListener("astro:page-load", sweep);
+        addEventListener("load", sweep);
+      })();
+    </script>
+
+    {/* 🍔 Universal mobile menu — the AI generates a bare hamburger ICON in the
+        `lg:hidden` nav block with NO toggle + NO drawer (and some sites have NO
+        hamburger at all), so the mobile menu is dead on nearly every generated
+        site. We OWN a working one at the scaffold level: build a drawer from the
+        page's own nav links, wire the existing hamburger (or inject one when the
+        header has links but no toggle). open/close resolve the overlay by ID at
+        click-time so View-Transition rebuilds never strand a stale handler.
+        Theme-agnostic (white panel on a backdrop, always readable), idempotent,
+        no-op when there are <2 nav links. JS comment — never shipped. */}
+    <script is:inline>
+      (function () {
+        var ID = "kleap-mobile-menu";
+        function openMenu() {
+          var m = document.getElementById(ID);
+          if (!m) return;
+          m.style.display = "block";
+          m.removeAttribute("hidden");
+          document.documentElement.style.overflow = "hidden";
+        }
+        function closeMenu() {
+          var m = document.getElementById(ID);
+          if (!m) return;
+          m.style.display = "none";
+          m.setAttribute("hidden", "");
+          document.documentElement.style.overflow = "";
+        }
+        function collectLinks(scope) {
+          var links = [], seen = {};
+          scope.querySelectorAll("a[href]").forEach(function (a) {
+            var href = a.getAttribute("href");
+            var label = (a.textContent || "").replace(/\s+/g, " ").trim();
+            if (!href || href.charAt(0) === "#") return;
+            if (!label || label.length < 2) return; // skip logo / icon-only links
+            if (a.querySelector("img, svg") && label.length < 3) return;
+            var key = href + "|" + label.toLowerCase();
+            if (seen[key]) return;
+            seen[key] = 1;
+            links.push({ href: href, label: label });
+          });
+          return links;
+        }
+        function navScope() {
+          // header>nav is the usual nav bar, but some sites leave it empty and put
+          // the links directly in <header> (or only have a bare <nav>). Pick the
+          // first scope that yields a real menu (>=2 links).
+          var cands = [
+            document.querySelector("header nav"),
+            document.querySelector("nav"),
+            document.querySelector("header"),
+          ];
+          for (var i = 0; i < cands.length; i++) {
+            if (cands[i] && collectLinks(cands[i]).length >= 2) return cands[i];
+          }
+          return null;
+        }
+        function navLinks() {
+          var s = navScope();
+          return s ? collectLinks(s) : [];
+        }
+        function ensureDrawer() {
+          var links = navLinks();
+          if (links.length < 2) return false;
+          var old = document.getElementById(ID);
+          if (old) old.remove();
+          var ov = document.createElement("div");
+          ov.id = ID;
+          ov.setAttribute("hidden", "");
+          ov.style.cssText = "position:fixed;inset:0;z-index:2147483600;display:none;";
+          var back = document.createElement("div");
+          back.style.cssText = "position:absolute;inset:0;background:rgba(0,0,0,.55);";
+          back.addEventListener("click", closeMenu);
+          var panel = document.createElement("nav");
+          panel.setAttribute("aria-label", "Menu");
+          panel.style.cssText =
+            "position:absolute;top:0;right:0;bottom:0;width:84%;max-width:340px;background:#fff;color:#111;padding:18px 22px;box-shadow:-8px 0 32px rgba(0,0,0,.28);overflow-y:auto;display:flex;flex-direction:column;gap:2px;";
+          var x = document.createElement("button");
+          x.setAttribute("aria-label", "Fermer");
+          x.innerHTML = "&times;";
+          x.style.cssText =
+            "align-self:flex-end;background:none;border:0;font-size:34px;line-height:1;color:#111;cursor:pointer;padding:2px 6px 10px;";
+          x.addEventListener("click", closeMenu);
+          panel.appendChild(x);
+          links.forEach(function (l) {
+            var a = document.createElement("a");
+            a.href = l.href;
+            a.textContent = l.label;
+            a.style.cssText =
+              "display:block;padding:14px 4px;font-size:18px;font-weight:500;color:#111;text-decoration:none;border-bottom:1px solid #ececec;";
+            a.addEventListener("click", closeMenu);
+            panel.appendChild(a);
+          });
+          ov.appendChild(back);
+          ov.appendChild(panel);
+          document.body.appendChild(ov);
+          return true;
+        }
+        function findHamburger() {
+          var hits = [];
+          document.querySelectorAll("header, nav").forEach(function (scope) {
+            scope
+              .querySelectorAll('[class*="lg:hidden"], [class*="md:hidden"]')
+              .forEach(function (c) {
+                var svgs = c.querySelectorAll("svg");
+                if (svgs.length) hits.push(svgs[svgs.length - 1].closest("button, a") || svgs[svgs.length - 1]);
+              });
+          });
+          return hits;
+        }
+        function injectHamburger() {
+          var host =
+            document.querySelector("header nav") ||
+            document.querySelector("header") ||
+            document.querySelector("nav");
+          if (!host) return false;
+          var btn = document.createElement("button");
+          btn.id = "kleap-burger";
+          btn.className = "lg:hidden"; // reuse the app's Tailwind: hidden ≥ lg
+          btn.setAttribute("aria-label", "Menu");
+          btn.style.cssText =
+            "position:fixed;top:14px;right:14px;z-index:2147483500;width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.92);border:1px solid rgba(0,0,0,.08);border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.12);cursor:pointer;";
+          btn.innerHTML =
+            '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>';
+          document.body.appendChild(btn);
+          return true;
+        }
+        function visibleNavCount(scope) {
+          if (!scope) return 0;
+          var n = 0;
+          scope.querySelectorAll("a[href]").forEach(function (a) {
+            var label = (a.textContent || "").replace(/\s+/g, " ").trim();
+            if (!label || label.length < 2) return;
+            if (a.querySelector("img, svg") && label.length < 3) return; // logo
+            var r = a.getBoundingClientRect();
+            if (a.offsetParent !== null && r.width > 0 && r.left < window.innerWidth) n++;
+          });
+          return n;
+        }
+        // 🛑 HANDS OFF a site that already has its own working mobile menu.
+        // Helping there does not ADD a menu, it REPLACES a working one: the
+        // handler below calls preventDefault(), and on a <label for> that is
+        // precisely what stops the checkbox from toggling — so the site's own
+        // drawer never opens and ours does, in white, over their design, out of
+        // any file they can edit. Reported verbatim by the owner of
+        // rhonyscar.fr: "impossible de supprimer la navbar coulissante
+        // blanche". Only CSS-only disclosures are detected, because those are
+        // the ones the DOM proves complete: a <label for> pointing at a real
+        // checkbox, or a `peer-checked:` class (Tailwind only emits that rule
+        // if the class is there). A bare aria-expanded is NOT evidence — the
+        // model decorates icons with it and wires nothing, which is the exact
+        // dead menu this whole block exists to rescue.
+        function siteOwnsMenu() {
+          var scopes = document.querySelectorAll("header, nav");
+          for (var i = 0; i < scopes.length; i++) {
+            var s = scopes[i];
+            // A <details> proves itself: the browser toggles it, no CSS needed.
+            if (s.querySelector("details > summary")) return true;
+            // 🚨 A `peer-checked:` class is NOT proof on its own. Tailwind
+            // compiles it to `.peer:checked ~ …`, so the rule only EXISTS if
+            // some element actually carries `peer`. Measured on app 88583
+            // (zee-news.kleap.io): the checkbox is `class="hidden"` with no
+            // `peer` anywhere, Tailwind emitted ZERO matching rules
+            // (`cssRules matching /peer.*checked/ → []`), and forcing
+            // `checked = true` leaves the drawer at display:none — that menu has
+            // never opened. Its header shows 2 links on mobile against 19 in the
+            // drawer, so OUR rescue is its only navigation. Requiring the wired
+            // sibling keeps us rescuing it while still standing off the sites
+            // that really do own a menu.
+            if (s.querySelector('.peer ~ [class*="peer-checked:"]')) return true;
+            var labels = s.querySelectorAll("label[for]");
+            for (var j = 0; j < labels.length; j++) {
+              var ctl = document.getElementById(labels[j].getAttribute("for"));
+              // Same reason for the label branch: 88583 trips it too (real
+              // label → real checkbox), so the control must be a wired `peer`.
+              if (
+                ctl &&
+                (ctl.type === "checkbox" || ctl.type === "radio") &&
+                ctl.classList.contains("peer")
+              )
+                return true;
+            }
+          }
+          return false;
+        }
+        function setup() {
+          if (siteOwnsMenu()) return;
+          var scope = navScope();
+          if (!scope) return;
+          var links = collectLinks(scope);
+          if (links.length < 2) return; // nothing to put in a menu
+          if (visibleNavCount(scope) >= links.length) return; // ALL links already inline → no menu needed
+          if (!ensureDrawer()) return;
+          var burgers = findHamburger();
+          if (!burgers.length) {
+            var existing = document.getElementById("kleap-burger");
+            if (!existing) injectHamburger();
+            burgers = [document.getElementById("kleap-burger")].filter(Boolean);
+          }
+          burgers.forEach(function (trig) {
+            if (!trig || trig.__kmWired) return;
+            trig.__kmWired = true;
+            trig.style.cursor = "pointer";
+            trig.addEventListener("click", function (e) {
+              e.preventDefault();
+              e.stopPropagation();
+              openMenu();
+            });
+          });
+        }
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape") closeMenu();
+        });
+        document.addEventListener("DOMContentLoaded", setup);
+        document.addEventListener("astro:page-load", setup);
+        if (document.readyState !== "loading") setup();
+      })();
+    </script>
+
+    <meta property="og:title" content={metaTitle} />
+    <meta property="og:description" content={metaDescription} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:site_name" content={siteName} />
+    {/* og:image ALWAYS ships (per-page `image` prop wins, else the system og
+        endpoint stamped at build) so link previews on LinkedIn/WhatsApp/Slack/X
+        render a visual instead of a blank card. */}
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    {ogImage && <meta property="og:image:alt" content={metaTitle} />}
+    {ogImage && <meta name="twitter:card" content="summary_large_image" />}
+    {ogImage && <meta name="twitter:image" content={ogImage} />}
+    {ogImage && <meta name="twitter:title" content={metaTitle} />}
+    {ogImage && <meta name="twitter:description" content={metaDescription} />}
+
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+  </head>
+  <body class="min-h-screen bg-background text-foreground antialiased">
+    <slot />
+    {/* 🎬 REVEAL-SAFETY GUARD — ships HERE, in the scaffold, on purpose.
+        It used to be string-injected into this file at build time by
+        astro-build-runner, which string-matched the closing body tag and took the
+        FIRST occurrence of that tag — and a comment above mentioned it, so the
+        guard (plus its own closing script tag) landed INSIDE the head script,
+        cut it in half, and every astro build on the platform died with a
+        misattributed `Unexpected "var"` (outage 2026-07-20). The layout and the
+        guard are both platform-owned, so there was never a reason to splice one
+        into the other: it lives here, and the kill-switch rides the same token
+        mechanism as __KLEAP_LANG__ / __KLEAP_FAILOPEN__.
+        Kill-switch: ASTRO_REVEAL_GUARD=off → the build stamps "off" below. */}
+    <script is:inline>
+      (function () {
+        if ("__KLEAP_REVEALGUARD__" === "off") return;
+(function(){var S='[class*="animate-fade"],[class*="animate-in"],[class*="animate-slide"],[class*="animate-zoom"],[data-reveal]';function skip(el){for(var n=el;n&&n!==document.body;n=n.parentElement){if(n.nodeType!==1)continue;var cs=getComputedStyle(n);if(cs.display==="none"||cs.visibility==="hidden")return true;if(n.getAttribute("aria-hidden")==="true"||n.hasAttribute("hidden")||n.getAttribute("data-state")==="closed"||n.getAttribute("aria-expanded")==="false")return true;}var c=getComputedStyle(el);if(c.position==="absolute"||c.position==="fixed"){var p=el.parentElement;if(p){var ch=p.children;for(var i=0;i<ch.length;i++){var sib=ch[i];if(sib!==el){var sc=getComputedStyle(sib);if((sc.position==="absolute"||sc.position==="fixed")&&parseFloat(sc.opacity)>=0.99)return true;}}}}return false;}function show(el){try{if(skip(el))return;if(window.__kleapShow)window.__kleapShow(el,".5s");}catch(e){}}function run(){var els=[].slice.call(document.querySelectorAll(S));if(!els.length)return;if("IntersectionObserver" in window){var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){show(e.target);io.unobserve(e.target);}});},{rootMargin:"0px 0px -8% 0px"});els.forEach(function(el){io.observe(el);});}setTimeout(function(){var vh=window.innerHeight||800;els.forEach(function(el){if(navigator.webdriver||el.getBoundingClientRect().top<vh)show(el);});},2500);}if(document.readyState!=="loading")run();else document.addEventListener("DOMContentLoaded",run);})();
+      })();
+    </script>
+  </body>
+</html>

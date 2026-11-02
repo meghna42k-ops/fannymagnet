@@ -1,0 +1,12 @@
+---
+import Base from '../../layouts/Base.astro';
+import AdminPanel from '../../components/AdminPanel';
+import { adminSession } from '../api/admin';
+export const prerender = false;
+const view=Astro.params.view;
+if(!['login','dashboard'].includes(view||''))return Astro.redirect('/404');
+if(view==='dashboard'){const admin=await adminSession(Astro.request);if(!admin)return Astro.redirect('/admin/login');}
+Astro.response.headers.set('Cache-Control','no-store');
+Astro.response.headers.set('X-Frame-Options','DENY');
+---
+<Base title="Administration — FANNYMAGNET" description="Private FANNYMAGNET administration. Authorised administrators only." noindex><AdminPanel client:only="react" view={view}/></Base>

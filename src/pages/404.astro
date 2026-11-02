@@ -1,0 +1,88 @@
+---
+// System 404 page. The @astrojs/cloudflare SSR worker renders this for any route
+// that doesn't match a built page, so unknown URLs get a clean BRANDED 404 (real
+// 404 status) instead of Astro's bare default 404. NOTE: this does NOT fix a 502
+// — the router worker's `kleap-dispatch-error` 502 only fires when the app worker
+// CRASHES (HTTP 500); an unknown route already returns 404, this just makes it
+// pretty. Seeded on every build (astro-build-runner ASTRO_SEED_EXTRA_FILES); an
+// app that ships its own src/pages/404.astro wins.
+// robots:noindex so the not-found page never gets indexed.
+import Base from "../layouts/Base.astro";
+
+// Localize the not-found copy — same PUBLIC_KLEAP_LANG the build stamps into
+// <html lang> (astro-build-runner.ts) and the same dictionary shape KleapForm
+// / KleapAuth already use. Before this, a 100% French/Spanish/… site still hit
+// a page that says "Page not found / Back to home" in English and breaks the
+// brand's own charter the moment a visitor mistypes a URL.
+const STRINGS: Record<
+  string,
+  { title: string; heading: string; body: string; cta: string }
+> = {
+  en: {
+    title: "Page not found",
+    heading: "Page not found",
+    body: "The page you were looking for doesn't exist or may have moved.",
+    cta: "Back to home",
+  },
+  fr: {
+    title: "Page introuvable",
+    heading: "Page introuvable",
+    body: "La page que vous cherchez n'existe pas ou a été déplacée.",
+    cta: "Retour à l'accueil",
+  },
+  es: {
+    title: "Página no encontrada",
+    heading: "Página no encontrada",
+    body: "La página que buscabas no existe o se ha movido.",
+    cta: "Volver al inicio",
+  },
+  de: {
+    title: "Seite nicht gefunden",
+    heading: "Seite nicht gefunden",
+    body: "Die gesuchte Seite existiert nicht oder wurde verschoben.",
+    cta: "Zurück zur Startseite",
+  },
+  it: {
+    title: "Pagina non trovata",
+    heading: "Pagina non trovata",
+    body: "La pagina cercata non esiste o è stata spostata.",
+    cta: "Torna alla home",
+  },
+  pt: {
+    title: "Página não encontrada",
+    heading: "Página não encontrada",
+    body: "A página que procura não existe ou foi movida.",
+    cta: "Voltar ao início",
+  },
+  nl: {
+    title: "Pagina niet gevonden",
+    heading: "Pagina niet gevonden",
+    body: "De pagina die je zocht bestaat niet of is verplaatst.",
+    cta: "Terug naar home",
+  },
+};
+const langCode = (
+  (import.meta.env.PUBLIC_KLEAP_LANG as string) || "en"
+)
+  .toLowerCase()
+  .split("-")[0];
+const t = STRINGS[langCode] || STRINGS.en;
+---
+
+<Base title={t.title} description={t.body} noindex>
+  <main
+    class="flex min-h-screen flex-col items-center justify-center gap-6 px-6 text-center"
+  >
+    <p class="text-6xl font-bold tracking-tight text-foreground/80">404</p>
+    <h1 class="text-2xl font-semibold text-foreground">{t.heading}</h1>
+    <p class="max-w-md text-foreground/60">
+      {t.body}
+    </p>
+    <a
+      href="/"
+      class="rounded-lg bg-foreground px-6 py-3 font-medium text-background transition-opacity hover:opacity-90"
+    >
+      {t.cta}
+    </a>
+  </main>
+</Base>

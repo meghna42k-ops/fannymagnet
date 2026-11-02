@@ -1,0 +1,462 @@
+@import "tailwindcss";
+/* shadcn/ui animations on Tailwind v4 (NOT tailwindcss-animate, which is v3-only). */
+@import "tw-animate-css";
+
+/* ---------------------------------------------------------------------------
+   shadcn/ui design tokens — EXACT official convention (ui.shadcn.com/docs/theming,
+   Tailwind v4, OKLCH, NO tailwind.config.js). Every semantic token shadcn /
+   Aceternity / copied components expect resolves here, so the AI can use
+   bg-background / text-foreground / bg-primary / border-border / bg-accent / …
+   AND raw var(--x) without ever hitting an undefined variable (the black-on-black
+   bug). The AI may RECOLOR by editing these values; it must NOT reference tokens
+   that don't exist here. --brand/--brand-accent kept for legacy brand styling.
+   --------------------------------------------------------------------------- */
+:root {
+  --radius: 0.625rem;
+  --background: #0c0e16;
+  --foreground: #eaecf5;
+  --card: #131623;
+  --card-foreground: #eaecf5;
+  --popover: #131623;
+  --popover-foreground: #eaecf5;
+  --primary: #5a5df0;
+  --primary-foreground: #ffffff;
+  --secondary: #1c2134;
+  --secondary-foreground: #eaecf5;
+  --muted: #1c2134;
+  --muted-foreground: #9ca0b5;
+  --accent: #e5ff3f;
+  --accent-foreground: #0b0b0f;
+  --border: #252b44;
+  --input: #252b44;
+  --ring: #5a5df0;
+  --destructive: #e5484d;
+  --destructive-foreground: #ffffff;
+  --chart-1: #6366f1;
+  --chart-2: #e5ff3f;
+  --chart-3: #ac63f1;
+  --chart-4: #34d34f;
+  --chart-5: #63c5f1;
+  --sidebar: #080a0f;
+  --sidebar-foreground: #eaecf5;
+  --sidebar-primary: #5a5df0;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1c2134;
+  --sidebar-accent-foreground: #eaecf5;
+  --sidebar-border: #22273e;
+  --sidebar-ring: #5a5df0;
+  --brand: #6366f1; --brand-dark: #2b2fec; --accent-color: #e5ff3f;
+}
+
+.dark {
+  --radius: 0.625rem;
+  --background: #0c0e16;
+  --foreground: #eaecf5;
+  --card: #131623;
+  --card-foreground: #eaecf5;
+  --popover: #131623;
+  --popover-foreground: #eaecf5;
+  --primary: #5a5df0;
+  --primary-foreground: #ffffff;
+  --secondary: #1c2134;
+  --secondary-foreground: #eaecf5;
+  --muted: #1c2134;
+  --muted-foreground: #9c9db4;
+  --accent: #e5ff3f;
+  --accent-foreground: #0b0b0f;
+  --border: #252b44;
+  --input: #252b44;
+  --ring: #5a5df0;
+  --destructive: #e5484d;
+  --destructive-foreground: #ffffff;
+  --chart-1: #6366f1;
+  --chart-2: #e5ff3f;
+  --chart-3: #ac63f1;
+  --chart-4: #34d34f;
+  --chart-5: #63c5f1;
+  --sidebar: #080a0f;
+  --sidebar-foreground: #eaecf5;
+  --sidebar-primary: #5a5df0;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1c2134;
+  --sidebar-accent-foreground: #eaecf5;
+  --sidebar-border: #22273e;
+  --sidebar-ring: #5a5df0;
+  --brand: #6366f1; --brand-dark: #3438ed; --accent-color: #e5ff3f;
+}
+
+/* Map the semantic vars onto Tailwind v4's @theme so utilities like
+   bg-background, text-foreground, bg-primary, bg-accent, border-border,
+   rounded-lg (via --radius) all resolve. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* 🎨 KLEAP COLOR ALIASES — the grayscale + brand utilities the AI reflexively
+     hardcodes (text-slate-900, bg-white, text-indigo-600, from-emerald-50…) are
+     remapped onto our semantic tokens, so the WHOLE site is theme-aware and
+     unified WITHOUT rewriting the AI's code — and the in-builder palette picker
+     can recolour everything by swapping :root. white→background; text-white on a
+     coloured button is backstopped by the runtime contrast guard. */
+  --color-white: var(--background);
+  --color-black: var(--foreground);
+  --color-slate-50: var(--card);
+  --color-slate-100: var(--muted);
+  --color-slate-200: var(--border);
+  --color-slate-300: var(--border);
+  --color-slate-400: var(--muted-foreground);
+  --color-slate-500: var(--muted-foreground);
+  --color-slate-600: var(--muted-foreground);
+  --color-slate-700: var(--foreground);
+  --color-slate-800: var(--foreground);
+  --color-slate-900: var(--foreground);
+  --color-slate-950: var(--foreground);
+  --color-gray-50: var(--card);
+  --color-gray-100: var(--muted);
+  --color-gray-200: var(--border);
+  --color-gray-300: var(--border);
+  --color-gray-400: var(--muted-foreground);
+  --color-gray-500: var(--muted-foreground);
+  --color-gray-600: var(--muted-foreground);
+  --color-gray-700: var(--foreground);
+  --color-gray-800: var(--foreground);
+  --color-gray-900: var(--foreground);
+  --color-gray-950: var(--foreground);
+  --color-zinc-50: var(--card);
+  --color-zinc-100: var(--muted);
+  --color-zinc-200: var(--border);
+  --color-zinc-300: var(--border);
+  --color-zinc-400: var(--muted-foreground);
+  --color-zinc-500: var(--muted-foreground);
+  --color-zinc-600: var(--muted-foreground);
+  --color-zinc-700: var(--foreground);
+  --color-zinc-800: var(--foreground);
+  --color-zinc-900: var(--foreground);
+  --color-zinc-950: var(--foreground);
+  --color-neutral-50: var(--card);
+  --color-neutral-100: var(--muted);
+  --color-neutral-200: var(--border);
+  --color-neutral-300: var(--border);
+  --color-neutral-400: var(--muted-foreground);
+  --color-neutral-500: var(--muted-foreground);
+  --color-neutral-600: var(--muted-foreground);
+  --color-neutral-700: var(--foreground);
+  --color-neutral-800: var(--foreground);
+  --color-neutral-900: var(--foreground);
+  --color-neutral-950: var(--foreground);
+  --color-stone-50: var(--card);
+  --color-stone-100: var(--muted);
+  --color-stone-200: var(--border);
+  --color-stone-300: var(--border);
+  --color-stone-400: var(--muted-foreground);
+  --color-stone-500: var(--muted-foreground);
+  --color-stone-600: var(--muted-foreground);
+  --color-stone-700: var(--foreground);
+  --color-stone-800: var(--foreground);
+  --color-stone-900: var(--foreground);
+  --color-stone-950: var(--foreground);
+  --color-red-50: var(--muted);
+  --color-red-100: var(--secondary);
+  --color-red-200: var(--secondary);
+  --color-red-300: var(--accent);
+  --color-red-400: var(--destructive);
+  --color-red-500: var(--destructive);
+  --color-red-600: var(--destructive);
+  --color-red-700: var(--destructive);
+  --color-red-800: var(--destructive);
+  --color-red-900: var(--destructive);
+  --color-red-950: var(--destructive);
+  --color-orange-50: var(--muted);
+  --color-orange-100: var(--secondary);
+  --color-orange-200: var(--secondary);
+  --color-orange-300: var(--accent);
+  --color-orange-400: var(--accent);
+  --color-orange-500: var(--primary);
+  --color-orange-600: var(--primary);
+  --color-orange-700: var(--primary);
+  --color-orange-800: var(--primary);
+  --color-orange-900: var(--primary);
+  --color-orange-950: var(--primary);
+  --color-amber-50: var(--muted);
+  --color-amber-100: var(--secondary);
+  --color-amber-200: var(--secondary);
+  --color-amber-300: var(--accent);
+  --color-amber-400: var(--accent);
+  --color-amber-500: var(--primary);
+  --color-amber-600: var(--primary);
+  --color-amber-700: var(--primary);
+  --color-amber-800: var(--primary);
+  --color-amber-900: var(--primary);
+  --color-amber-950: var(--primary);
+  --color-yellow-50: var(--muted);
+  --color-yellow-100: var(--secondary);
+  --color-yellow-200: var(--secondary);
+  --color-yellow-300: var(--accent);
+  --color-yellow-400: var(--accent);
+  --color-yellow-500: var(--primary);
+  --color-yellow-600: var(--primary);
+  --color-yellow-700: var(--primary);
+  --color-yellow-800: var(--primary);
+  --color-yellow-900: var(--primary);
+  --color-yellow-950: var(--primary);
+  --color-lime-50: var(--muted);
+  --color-lime-100: var(--secondary);
+  --color-lime-200: var(--secondary);
+  --color-lime-300: var(--accent);
+  --color-lime-400: var(--accent);
+  --color-lime-500: var(--primary);
+  --color-lime-600: var(--primary);
+  --color-lime-700: var(--primary);
+  --color-lime-800: var(--primary);
+  --color-lime-900: var(--primary);
+  --color-lime-950: var(--primary);
+  --color-green-50: var(--muted);
+  --color-green-100: var(--secondary);
+  --color-green-200: var(--secondary);
+  --color-green-300: var(--accent);
+  --color-green-400: var(--accent);
+  --color-green-500: var(--primary);
+  --color-green-600: var(--primary);
+  --color-green-700: var(--primary);
+  --color-green-800: var(--primary);
+  --color-green-900: var(--primary);
+  --color-green-950: var(--primary);
+  --color-emerald-50: var(--muted);
+  --color-emerald-100: var(--secondary);
+  --color-emerald-200: var(--secondary);
+  --color-emerald-300: var(--accent);
+  --color-emerald-400: var(--accent);
+  --color-emerald-500: var(--primary);
+  --color-emerald-600: var(--primary);
+  --color-emerald-700: var(--primary);
+  --color-emerald-800: var(--primary);
+  --color-emerald-900: var(--primary);
+  --color-emerald-950: var(--primary);
+  --color-teal-50: var(--muted);
+  --color-teal-100: var(--secondary);
+  --color-teal-200: var(--secondary);
+  --color-teal-300: var(--accent);
+  --color-teal-400: var(--accent);
+  --color-teal-500: var(--primary);
+  --color-teal-600: var(--primary);
+  --color-teal-700: var(--primary);
+  --color-teal-800: var(--primary);
+  --color-teal-900: var(--primary);
+  --color-teal-950: var(--primary);
+  --color-cyan-50: var(--muted);
+  --color-cyan-100: var(--secondary);
+  --color-cyan-200: var(--secondary);
+  --color-cyan-300: var(--accent);
+  --color-cyan-400: var(--accent);
+  --color-cyan-500: var(--primary);
+  --color-cyan-600: var(--primary);
+  --color-cyan-700: var(--primary);
+  --color-cyan-800: var(--primary);
+  --color-cyan-900: var(--primary);
+  --color-cyan-950: var(--primary);
+  --color-sky-50: var(--muted);
+  --color-sky-100: var(--secondary);
+  --color-sky-200: var(--secondary);
+  --color-sky-300: var(--accent);
+  --color-sky-400: var(--accent);
+  --color-sky-500: var(--primary);
+  --color-sky-600: var(--primary);
+  --color-sky-700: var(--primary);
+  --color-sky-800: var(--primary);
+  --color-sky-900: var(--primary);
+  --color-sky-950: var(--primary);
+  --color-blue-50: var(--muted);
+  --color-blue-100: var(--secondary);
+  --color-blue-200: var(--secondary);
+  --color-blue-300: var(--accent);
+  --color-blue-400: var(--accent);
+  --color-blue-500: var(--primary);
+  --color-blue-600: var(--primary);
+  --color-blue-700: var(--primary);
+  --color-blue-800: var(--primary);
+  --color-blue-900: var(--primary);
+  --color-blue-950: var(--primary);
+  --color-indigo-50: var(--muted);
+  --color-indigo-100: var(--secondary);
+  --color-indigo-200: var(--secondary);
+  --color-indigo-300: var(--accent);
+  --color-indigo-400: var(--accent);
+  --color-indigo-500: var(--primary);
+  --color-indigo-600: var(--primary);
+  --color-indigo-700: var(--primary);
+  --color-indigo-800: var(--primary);
+  --color-indigo-900: var(--primary);
+  --color-indigo-950: var(--primary);
+  --color-violet-50: var(--muted);
+  --color-violet-100: var(--secondary);
+  --color-violet-200: var(--secondary);
+  --color-violet-300: var(--accent);
+  --color-violet-400: var(--accent);
+  --color-violet-500: var(--primary);
+  --color-violet-600: var(--primary);
+  --color-violet-700: var(--primary);
+  --color-violet-800: var(--primary);
+  --color-violet-900: var(--primary);
+  --color-violet-950: var(--primary);
+  --color-purple-50: var(--muted);
+  --color-purple-100: var(--secondary);
+  --color-purple-200: var(--secondary);
+  --color-purple-300: var(--accent);
+  --color-purple-400: var(--accent);
+  --color-purple-500: var(--primary);
+  --color-purple-600: var(--primary);
+  --color-purple-700: var(--primary);
+  --color-purple-800: var(--primary);
+  --color-purple-900: var(--primary);
+  --color-purple-950: var(--primary);
+  --color-fuchsia-50: var(--muted);
+  --color-fuchsia-100: var(--secondary);
+  --color-fuchsia-200: var(--secondary);
+  --color-fuchsia-300: var(--accent);
+  --color-fuchsia-400: var(--accent);
+  --color-fuchsia-500: var(--primary);
+  --color-fuchsia-600: var(--primary);
+  --color-fuchsia-700: var(--primary);
+  --color-fuchsia-800: var(--primary);
+  --color-fuchsia-900: var(--primary);
+  --color-fuchsia-950: var(--primary);
+  --color-pink-50: var(--muted);
+  --color-pink-100: var(--secondary);
+  --color-pink-200: var(--secondary);
+  --color-pink-300: var(--accent);
+  --color-pink-400: var(--accent);
+  --color-pink-500: var(--primary);
+  --color-pink-600: var(--primary);
+  --color-pink-700: var(--primary);
+  --color-pink-800: var(--primary);
+  --color-pink-900: var(--primary);
+  --color-pink-950: var(--primary);
+  --color-rose-50: var(--muted);
+  --color-rose-100: var(--secondary);
+  --color-rose-200: var(--secondary);
+  --color-rose-300: var(--accent);
+  --color-rose-400: var(--accent);
+  --color-rose-500: var(--primary);
+  --color-rose-600: var(--primary);
+  --color-rose-700: var(--primary);
+  --color-rose-800: var(--primary);
+  --color-rose-900: var(--primary);
+  --color-rose-950: var(--primary);
+}
+
+/* shadcn base layer — every element gets the themed border color, and the page
+   itself defaults to the themed background/foreground. This is the safety net:
+   even if the AI forgets to put bg-background/text-foreground on <body>, the
+   page is never unreadable (no white-on-white / black-on-black by default). */
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+}
+
+/* @kleap-contrast-guard ──────────────────────────────────────────────────────
+   CONTRAST GUARANTEE — legible text over images, every time, deterministically.
+   The model reliably puts light text over a cover image WITHOUT a dark scrim, so
+   on a light photo (gold, blush, pale stone) the text becomes unreadable. The
+   prompt can't be trusted to fix this on every generation, so the SCAFFOLD owns
+   it: any container holding a full-bleed `object-cover` image gets a soft dark
+   gradient (subtle floor + stronger at the bottom, where overlaid copy usually
+   sits) painted between the image and the text. Scoped to the image's DIRECT
+   parent so it never tints whole sections; pointer-events:none so it never
+   blocks clicks. This makes text-over-image readable on EVERY site without the
+   AI having to remember an overlay.
+   ⚠️ EXCLUDES `.absolute`/`.fixed`/`.sticky`: a full-bleed bg-image wrapper
+   (`<div class="absolute inset-0"><img object-cover>`) must KEEP its own
+   position — forcing `relative` knocked it into the flex flow and ate half the
+   hero (the "vide" bug, app 29482). Those wrappers hold no text, so no scrim. */
+:where(div, a, figure, article):not(.absolute):not(.fixed):not(.sticky):has(
+    > img[class*="object-cover"][class*="absolute"]
+  ) {
+  position: relative;
+}
+:where(div, a, figure, article):not(.absolute):not(.fixed):not(.sticky):has(
+    > img[class*="object-cover"][class*="absolute"]
+  )::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.58),
+    rgba(0, 0, 0, 0.18) 55%,
+    rgba(0, 0, 0, 0.1) 100%
+  );
+  pointer-events: none;
+}
+
+/* Design DNA — geometry for this app (seed 132447): crisp corners, wide rhythm.
+   Tailwind v4 resolves rounded-* and max-w-* through these, so the same class
+   the model always writes renders differently here than in the next app. */
+@theme {
+  --radius-sm: 0.15rem;
+  --radius-md: 0.225rem;
+  --radius-lg: 0.3rem;
+  --radius-xl: 0.45rem;
+  --radius-2xl: 0.6rem;
+  --radius-3xl: 0.9rem;
+  --radius-4xl: 1.2rem;
+  --container-md: 31.36rem;
+  --container-lg: 35.84rem;
+  --container-xl: 40.32rem;
+  --container-2xl: 47.04rem;
+  --container-3xl: 53.76rem;
+  --container-4xl: 62.72rem;
+  --container-5xl: 71.68rem;
+  --container-6xl: 80.64rem;
+  --container-7xl: 89.6rem;
+  --tracking-tighter: -0.05em;
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.025em;
+  --blur-xs: 4px;
+  --blur-sm: 8px;
+  --blur-md: 12px;
+  --blur-lg: 16px;
+  --blur-xl: 24px;
+}
