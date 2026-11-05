@@ -6,4 +6,4 @@ export function getStaticPaths() {
 }
 const view=Astro.params.view;
 ---
-<Base title="Administration — FANNYMAGNET" description="Private FANNYMAGNET administration. Authorised administrators only." noindex><AdminPanel client:only="react" view={view}/></Base>
+<Base title={view === 'login' ? 'Administrator Sign-In — FANNYMAGNET' : 'Administration Dashboard — FANNYMAGNET'} description={view === 'login' ? 'Secure sign-in for authorised FANNYMAGNET administrators. Access your private account to manage the publication and nutrition store.' : 'Private FANNYMAGNET dashboard for authorised administrators to manage products, inventory, orders, editorial content and website settings.'} noindex><h1 class="sr-only">{view === 'login' ? 'Administrator sign-in' : 'Administration dashboard'}</h1><AdminPanel client:only="react" view={view}/></Base>
